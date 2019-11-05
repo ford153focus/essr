@@ -14,11 +14,24 @@ namespace essr
             Task.Run(
                 async () =>
                 {
-                    await new BrowserFetcher().DownloadAsync(BrowserFetcher.DefaultRevision);
+                    RevisionInfo browserFetcher = await new BrowserFetcher().DownloadAsync(BrowserFetcher.DefaultRevision);
 
                     _browser = await Puppeteer.LaunchAsync(new LaunchOptions
                     {
-                        Headless = true //TODO: set 'true' before commit!
+                        IgnoreHTTPSErrors = true,
+                        Headless = true, //TODO: set 'true' before commit!
+                        ExecutablePath = browserFetcher.ExecutablePath,
+                        Args = new[]
+                        {
+                            "--disable-gpu",
+                            "--enable-logging",
+                            "--headless",
+                            "--no-sandbox",
+                            "--remote-debugging-port=9222",
+                            "--v=1",
+                        },
+                        DumpIO = true,
+                        LogProcess = true,
                     });
                 }
             ).Wait();
@@ -51,7 +64,7 @@ namespace essr
             {
                 await page.WaitForNavigationAsync(new NavigationOptions
                 {
-                    WaitUntil = new[] {WaitUntilNavigation.Networkidle0}
+                    WaitUntil = new[] {WaitUntilNavigation.Networkidle2}
                 });
             }
             catch (Exception){}

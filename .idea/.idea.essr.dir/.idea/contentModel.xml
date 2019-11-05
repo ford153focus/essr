@@ -7,6 +7,13 @@
     <e p="$USER_HOME$/.Rider2019.3/system/resharper-host/local/Transient/ReSharperHost/v193/SolutionCaches/_.19.00" t="ExcludeRecursive" />
     <e p="$PROJECT_DIR$" t="IncludeRecursive">
       <e p=".gitignore" t="Include" />
+      <e p=".local-chromium" t="Include">
+        <e p="Linux-686378" t="Include">
+          <e p="chrome-linux" t="Include">
+            <e p="chrome_debug.log" t="Include" />
+          </e>
+        </e>
+      </e>
       <e p="Chromium.cs" t="Include" />
       <e p="Controllers" t="Include">
         <e p="PrerenderController.cs" t="Include" />
