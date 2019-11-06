@@ -7,6 +7,7 @@ namespace essr
     {
         public static void Main(string[] args)
         {
+            var chromium = Chromium.GetInstance(); // initialize singleton before everything
             CreateHostBuilder(args).Build().Run();
         }
 
