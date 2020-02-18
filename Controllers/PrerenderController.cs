@@ -13,6 +13,7 @@ namespace essr.Controllers
         {
             var db = new CachedPageContext();
             db.Database.EnsureCreated();
+
             // search page in cache database
             var page = db.CachedPages
                 .FirstOrDefault(cachedPage => cachedPage.Url == url && cachedPage.TimeStamp > Utils.Dt.UnixNow() - Utils.Dt.SecsInWeek);
@@ -29,13 +30,14 @@ namespace essr.Controllers
             Chromium chromium = Chromium.GetInstance();
             Response response;
             string sourceCode;
+            PrerenderSpecials prerenderSpecials;
 
             // relaunch method on chromium fail
             try
             {
-                (response, sourceCode) = await chromium.GoToUrlAsync(url);                
+                (response, sourceCode, prerenderSpecials) = await chromium.GoToUrlAsync(url);
             }
-            catch (System.Exception)
+            catch (Exception)
             {
                 await FillCache(url);
                 return;
@@ -48,7 +50,7 @@ namespace essr.Controllers
             {
                 Url = url,
                 TimeStamp = Utils.Dt.UnixNow(),
-                AnswerHttpCode = (int) response.Status,
+                AnswerHttpCode = string.IsNullOrEmpty(prerenderSpecials.StatusCode) ? (int)response.Status : Convert.ToInt32(prerenderSpecials.StatusCode),
                 SourceCode = sourceCode
             });
             db.SaveChanges();

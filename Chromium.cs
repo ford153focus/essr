@@ -1,9 +1,17 @@
 using System;
+using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using PuppeteerSharp;
 
 namespace essr
 {
+    class PrerenderSpecials
+    {
+        public string StatusCode {get; set;}
+        public string Header {get; set;}
+    }
+
     class Chromium
     {
         private static Chromium _instance;
@@ -11,7 +19,7 @@ namespace essr
 
         private Chromium()
         {
-            Task.Run(() => SpawnBrowser()).Wait();
+            Task.Run(SpawnBrowser).Wait();
         }
 
         ~Chromium()
@@ -37,20 +45,19 @@ namespace essr
                 ExecutablePath = browserFetcher.ExecutablePath,
                 Args = new[]
                 {
-                            "--disable-gpu",
-                            "--enable-logging",
-                            "--headless",
-                            "--no-sandbox",
-                        },
+                    "--disable-gpu",
+                    "--enable-logging",
+                    "--headless",
+                    "--no-sandbox"
+                },
                 DumpIO = true,
-                LogProcess = true,
+                LogProcess = true
             });
         }
 
-        public async Task<Tuple<Response, string>> GoToUrlAsync(string url)
+        public async Task<Tuple<Response, string, PrerenderSpecials>> GoToUrlAsync(string url)
         {
-            // Chromium can die unexpectedly
-            // Respawn it if failed
+            // Chromium can die unexpectedly - respawn on fail
             if (_browser == null || _browser.IsClosed)
             {
                 SpawnBrowser();
@@ -73,30 +80,45 @@ namespace essr
             {
                 await page.WaitForNavigationAsync(new NavigationOptions
                 {
-                    Timeout = 10530,
-                    WaitUntil = new[] { WaitUntilNavigation.Networkidle2 }
+                    Timeout = 5310,
+                    WaitUntil = new[] {WaitUntilNavigation.Networkidle0}
                 });
             }
             catch (Exception)
             {
                 // Nothing is required to do, it's ok
             }
-            
-            // Trying to fix base href            
+
+            #region Trying to fix base href
             try
             {
-                var tabHostUrl = await page.EvaluateExpressionAsync<string>("window.location.protocol+'//'+window.location.host+'/'");
-                var baseSelector = await page.EvaluateExpressionAsync<dynamic>("document.querySelector('base')");
-                if (baseSelector == null) {
-                    await page.EvaluateExpressionAsync<dynamic>($"base=document.createElement('base');base.href='{tabHostUrl}';document.getElementsByTagName('head')[0].appendChild(base);");
-                } else {
-                    await page.EvaluateExpressionAsync<dynamic>($"document.querySelector('base').href='{tabHostUrl}'");
-                }
-                
+                var baseFixerPath = Path.Combine(
+                    Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), 
+                    "js", 
+                    "base_fixer.js"
+                );
+                var baseFixerStr = File.ReadAllText(baseFixerPath);
+
+                await page.EvaluateExpressionAsync<dynamic>(baseFixerStr);
             }
-            catch (Exception) {
+            catch (Exception)
+            {
                 // Nothing is required to do, it's ok
             }
+            #endregion
+
+            #region Trying to get and parse special prerender meta-tag
+            var prerenderSpecials = new PrerenderSpecials();
+            try
+            {
+                prerenderSpecials.StatusCode = await page.EvaluateExpressionAsync<string>("document.querySelector('meta[name=\"prerender-status-code\"]') ? document.querySelector('meta[name=\"prerender-status-code\"]').content : null");
+                prerenderSpecials.Header = await page.EvaluateExpressionAsync<string>("document.querySelector('meta[name=\"prerender-header\"]') ? document.querySelector('meta[name=\"prerender-header\"]').content : null");
+            }
+            catch (Exception)
+            {
+                // Nothing is required to do, it's ok
+            }
+            #endregion
 
             // Grab source code of page
             var pageSourceCode = await page.GetContentAsync();
@@ -104,7 +126,7 @@ namespace essr
             // Close tab to save resources
             await page.CloseAsync();
 
-            return Tuple.Create(response, pageSourceCode);
+            return Tuple.Create(response, pageSourceCode, prerenderSpecials);
         }
     }
 }
