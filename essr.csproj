@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- <PublishSingleFile>true</PublishSingleFile> -->
+    <!-- <PublishTrimmed>true</PublishTrimmed> -->
   </PropertyGroup>
 
   <ItemGroup>
